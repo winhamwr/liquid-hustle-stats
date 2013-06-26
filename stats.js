@@ -47,9 +47,8 @@ var maxBarWidth = 600; // width of the bar with the max value
 var barLabel = function (d) { return d.Name; };
 var barValue = function (d) { return parseFloat(d[categories[category_index]]); };
 
-function renderChart(category_index) {
-    var data = d3.csv.parse(d3.select('#csv').text()),
-        sortedData,
+function renderChart(data, category_index) {
+    var sortedData,
         yScale,
         y,
         yText,
@@ -175,12 +174,10 @@ function renderChart(category_index) {
         .attr("y1", -gridChartOffset)
         .attr("y2", yScale.rangeExtent()[1] + gridChartOffset)
         .style("stroke", "#000");
-
 }
 
-function redraw() {
+function redraw(data) {
     var chart = d3.select('#chart'),
-        data = d3.csv.parse(d3.select('#csv').text()),
         sortedData,
         yScale,
         y,
@@ -316,23 +313,5 @@ function getTickValues(data, numValues, accessor) {
     return tickIndices.map(function (i) { return data[i]; });
 }
 
-// Event Handlers
-$("input:radio[name=category]").click(function () {
-    category_index = $(this).val();
-    category_text = categories[category_index];
-    redraw();
-});
-
-$("input:radio[name=sorting]").click(function () {
-    old_sorting_value = sorting_value;
-    sorting_value = $(this).val();
-    redraw();
-});
-
-$("#chart").click(function () {
-	if (category_index >= 11) {
-        category_index = 0;
-    }
-});
 
 
