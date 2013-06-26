@@ -1,0 +1,407 @@
+<html>
+  <head>
+     <title>Bar Chart</title>
+     <meta http-equiv="X-UA-Compatible" content="IE=9">
+  </head>
+  <body>
+    <div style="width: auto;">
+      <div style="display: inline-block;">
+        <h1 id="chart_title">Points Played</h1>
+
+        <input type="radio" name="sorting" value="none" checked="checked">None</input>
+        <input type="radio" name="sorting" value="ascending">Ascending</input>
+        <input type="radio" name="sorting" value="descending">Descending</input>
+        <br />
+        <br />
+        <div id="chart"></div>
+      </div>
+
+      <div style="display: inline-block;">
+        <h3>Points</h3>
+        <input type="radio" name="category" value="0" checked="checked">Points Played</input>
+        <input type="radio" name="category" value="1">Points Won</input>
+        <input type="radio" name="category" value="2">Points Lost</input>
+        <br/>
+        <br/>
+        <h3>Posessions</h3>
+        <input type="radio" name="category" value="3">Posessions played</input>
+        <input type="radio" name="category" value="4">Offensive Posessions</input>
+        <input type="radio" name="category" value="5">Defensive Posessions</input>
+        <br/>
+        <br/>
+        <h3>Normalized Stats</h3>
+        <input type="radio" name="category" value="6">Scores per 100 Points</input>
+        <input type="radio" name="category" value="7">Assists per 100 Points</input>
+        <input type="radio" name="category" value="8">Ds per 100 Posessions</input>
+        <input type="radio" name="category" value="9">Completed throws per 100 Posessions</input>
+        <input type="radio" name="category" value="10">Catches per 100 Posessions</input>
+        <br/>
+        <br/>
+        <h3>Percentages</h3>
+        <input type="radio" name="category" value="11">Turnover Percentage</input>
+        <input type="radio" name="category" value="12">Assist Percentage</input>
+        <input type="radio" name="category" value="13">Assist to Turnover Ratio</input>
+        <input type="radio" name="category" value="14">Score Percentage</input>
+        <input type="radio" name="category" value="15">Drop Percentage</input>
+        <br/>
+        <br/>
+        <h3>Base</h3>
+        <input type="radio" name="category" value="16">Complete Throws</input>
+        <input type="radio" name="category" value="17">Catches</input>
+        <input type="radio" name="category" value="18">Turnovers</input>
+        <input type="radio" name="category" value="19">Drops</input>
+        <input type="radio" name="category" value="20">Assists</input>
+        <input type="radio" name="category" value="21">Scores</input>
+        <input type="radio" name="category" value="22">Ds</input>
+        <input type="radio" name="category" value="23">Involvements</input>
+        <input type="radio" name="category" value="24">Throws to dropper</input>
+        <input type="radio" name="category" value="25">Disc Pickups</input>
+      </div>
+    <div>
+
+    <script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+    <script src="http://d3js.org/d3.v2.min.js"></script>
+
+    <script>
+var categories = ['Points Played','Points Won','Points Lost','Posessions played','Offensive Posessions','Defensive Posessions','Scores per 100 Points','Assists per 100 Points','Ds per 100 Posessions','Completed throws per 100 Posessions','Catches per 100 Posessions','Turnover Percentage','Assist Percentage','Assist to Turnover Ratio','Score Percentage','Drop Percentage','Complete Throws','Catches','Turnovers','Drops','Assists','Scores','Ds','Involvements','Throws to dropper','Disc Pickups'];
+
+var category_index = 0;
+var category_text = 'Points Won';
+var old_sorting_value = 'none';
+var sorting_value = 'none';
+var num_ticks = 10;
+
+var selectedPlayers = [];
+
+$("input:radio[name=category]").click(function() {
+    category_index = $(this).val();
+    category_text = categories[category_index];
+    //renderChart(category_index);
+    redraw();
+  });
+
+$("input:radio[name=sorting]").click(function() {
+    old_sorting_value = sorting_value;
+    sorting_value = $(this).val();
+    //renderChart(category_index);
+    redraw();
+  });
+
+$("#chart").click(function () {
+	if (category_index >= 11)
+{
+	category_index = 0;
+}
+	//renderChart(category_index++);
+});
+
+
+var valueLabelWidth = 40; // space reserved for value labels (right)
+var barHeight = 20; // height of one bar
+var barLabelWidth = 130; // space reserved for bar labels
+var barLabelPadding = 5; // padding between bar and bar labels (left)
+var gridLabelHeight = 18; // space reserved for gridline labels
+var gridChartOffset = 3; // space between start of grid and first bar
+var maxBarWidth = 600; // width of the bar with the max value
+
+// accessor functions 
+var barLabel = function(d) { return d['Name']; };
+var barValue = function(d) { return parseFloat(d[categories[category_index]]); };
+
+function renderChart(category_index) {
+
+
+//remove the old chart
+//d3.select("svg").remove();
+$("#chart_title").text(categories[category_index]);
+
+  var data = d3.csv.parse(d3.select('#csv').text());
+   
+  // sorting
+  var sortedData = data.sort(function(a, b) {
+
+    if (sorting_value == 'ascending')
+    {
+      return d3.ascending(barValue(a), barValue(b)); 
+    }
+    else if (sorting_value == 'descending')
+    {
+      return d3.descending(barValue(a), barValue(b)); 
+    }
+    else //(sorting_value == 'none')
+    {
+      return data;
+    }
+    
+  }); 
+
+// scales
+var yScale = d3.scale.ordinal().domain(d3.range(0, sortedData.length)).rangeBands([0, sortedData.length * barHeight]);
+var y = function(d, i) { return yScale(i); };
+var yText = function(d, i) { return y(d, i) + yScale.rangeBand() / 2; };
+var x = d3.scale.linear().domain([0, d3.max(sortedData, barValue)]).range([0, maxBarWidth]);
+
+// svg container element
+var chart = d3.select('#chart').append("svg")
+  .attr('width', maxBarWidth + barLabelWidth + valueLabelWidth)
+  .attr('height', gridLabelHeight + gridChartOffset + sortedData.length * barHeight);
+
+// grid line labels
+var gridContainer = chart.append('g')
+  .attr('transform', 'translate(' + barLabelWidth + ',' + gridLabelHeight + ')'); 
+gridContainer.selectAll("text").data(x.ticks(num_ticks)).enter().append("text")
+  .attr("class", "grid-line-labels")
+  .attr("x", x)
+  .attr("dy", -3)
+  .attr("text-anchor", "middle")
+  .text(String);
+
+// vertical grid lines
+gridContainer.selectAll("line").data(x.ticks(num_ticks)).enter().append("line")
+  .attr("x1", x)
+  .attr("x2", x)
+  .attr("y1", 0)
+  .attr("y2", yScale.rangeExtent()[1] + gridChartOffset)
+  .style("stroke", "#ccc");
+
+// bar labels
+var labelsContainer = chart.append('g')
+  .attr('transform', 'translate(' + (barLabelWidth - barLabelPadding) + ',' + (gridLabelHeight + gridChartOffset) + ')'); 
+labelsContainer.selectAll('text').data(sortedData).enter().append('text')
+  .attr("class", "bar-names")
+  .attr("id", function(d, i) { return "bar-name-" + i; })
+  .attr('y', yText)
+  .attr('stroke', 'none')
+  .attr('fill', 'black')
+  .attr("dy", ".35em") // vertical-align: middle
+  .attr('text-anchor', 'end')
+      .on("mouseover", function(){d3.select(this).style("fill", "darkgray");})
+      .on("mouseout", function()
+      {
+        if ($.inArray(d3.select(this).text(), selectedPlayers) == -1)
+        {
+          d3.select(this).style("fill", "black");
+        }
+      })
+      .on("click", function()
+      {
+        selectedPlayers.push(d3.select(this).text());
+        d3.select(this).style('fill', 'darkgray');
+      })
+  .text(barLabel);
+
+// bars
+var barsContainer = chart.append('g')
+  .attr('transform', 'translate(' + barLabelWidth + ',' + (gridLabelHeight + gridChartOffset) + ')'); 
+barsContainer.selectAll("rect")
+  .data(sortedData)
+  .enter()
+  .append("rect")
+  .attr("class", "bars")
+  .attr("id", function(d, i) { return "bar-" + i; })
+  .attr('y', y)
+  .attr('height', yScale.rangeBand())
+  .attr('width', function(d) { return x(barValue(d)); })
+  .attr('stroke', 'white')
+  .attr('fill', 'steelblue')
+      .on("mouseover", function(){d3.select(this).style("fill", "darkgray");})
+      .on("mouseout", function(){d3.select(this).style("fill", "steelblue");});
+
+// bar value labels
+barsContainer.selectAll("text").data(sortedData).enter().append("text")
+  .attr("class", "bar-value-labels")
+  .attr("x", function(d) { return x(barValue(d)); })
+  .attr("y", yText)
+  .attr("dx", 3) // padding-left
+  .attr("dy", ".35em") // vertical-align: middle
+  .attr("text-anchor", "start") // text-align: right
+  .attr("fill", "black")
+  .attr("stroke", "none")
+  .text(function(d) { return d3.round(barValue(d), 2); });
+
+// start line
+barsContainer.append("line")
+  .attr("y1", -gridChartOffset)
+  .attr("y2", yScale.rangeExtent()[1] + gridChartOffset)
+  .style("stroke", "#000");
+
+}
+
+function redraw() {
+
+  var chart = d3.select('#chart');
+
+  $("#chart_title").text(categories[category_index]);
+
+  var data = d3.csv.parse(d3.select('#csv').text());
+
+  // sorting
+  var sortedData = data.sort(function(a, b) {
+
+    if (sorting_value == 'ascending')
+    {
+      return d3.ascending(barValue(a), barValue(b)); 
+    }
+    else if (sorting_value == 'descending')
+    {
+      return d3.descending(barValue(a), barValue(b)); 
+    }
+    else //(sorting_value == 'none')
+    {
+      return data;
+    }
+    
+  });
+
+var yScale = d3.scale.ordinal().domain(d3.range(0, sortedData.length)).rangeBands([0, sortedData.length * barHeight]);
+var y = function(d, i) { return yScale(i); };
+var yText = function(d, i) { return y(d, i) + yScale.rangeBand() / 2; };
+var x = d3.scale.linear().domain([0, d3.max(sortedData, barValue)]).range([0, maxBarWidth]);
+
+//alert("redrawing, old:" + old_sorting_value + " new:" + sorting_value);
+
+
+  var gridLineLabels = chart.selectAll(".grid-line-labels")
+  .data(x.ticks(num_ticks))
+  .attr("opacity", ".5")
+  .transition()
+  .duration(500)
+  .attr("opacity", "0.25")
+  .text(String);
+
+  var labels = chart.selectAll('.bar-names')
+  .data(sortedData)
+  .attr("opacity", "1")
+  .transition()
+  .duration(500)
+  .attr("opacity", "0")
+  .transition()
+  .delay(500)
+  .duration(500)
+  .attr("opacity", "1")
+  .text(barLabel);
+
+  var rect = chart.selectAll(".bars")
+    .data(sortedData)
+    .attr('fill', 'steelblue')
+    .transition()
+    .duration(1000)
+    .attr('width', function(d) { return x(barValue(d)); });
+
+  var barValueLabels = chart.selectAll(".bar-value-labels")
+  .data(sortedData)
+  .transition()
+  .duration(1000)
+  .attr("x", function(d) { return x(barValue(d)); })
+  .text(function(d) { return d3.round(barValue(d), 2); });
+  
+  //updateColors();
+}
+/*
+function updateColors()
+{
+
+  var selectedIndeces = [];
+  $('[id^="bar-name-"]').each(function () {
+      if ($.inArray($(this).text(), selectedPlayers) > -1)
+      {
+          //add selected index to new variable
+          selectedIndeces.push($(this).attr("id").substr($(this).attr("id").length - 1));
+          $(this).attr("color", "darkgray");
+      }
+      else
+      {
+          $(this).attr("color", "black");
+      }
+  });
+console.log(selectedPlayers + " " + selectedIndeces);
+  for (var i = 0; i < selectedIndeces.length; i++)
+  {
+    $("#bar-" + selectedIndeces[i]).attr("fill", "darkgray"); 
+  }
+
+}
+*/
+//Function to fix the ticks not being correct (need to figure out the accessor function for my data)
+function getTickValues(data, numValues, accessor)
+{
+  var interval, residual, tickIndices, last, i;
+
+  if (numValues <= 0)
+  {
+    tickIndices = [];
+  }
+  else if (numValues == 1)
+  {
+    tickIndices = [ Math.floor(numValues/2) ];
+  }
+  else
+  {
+    // We have at least 2 ticks to display.
+    // Calculate the rough interval between ticks.
+    interval = Math.floor(data.length / (numValues-1));
+
+    // If it's not perfect, record it in the residual.
+    residual = Math.floor(data.length % (numValues-1));
+
+    // Always label our first datapoint.
+    tickIndices = [0];
+
+    // Set stop point on the interior ticks.
+    last = data.length-interval;
+
+    // Figure out the interior ticks, gently drift to accommodate
+    // the residual.
+    for (i=interval; i<last; i+=interval)
+    {
+      if (residual > 0)
+      {
+        i += 1;
+        residual -= 1;
+      }
+      tickIndices.push(i);
+    }
+    // Always graph the last tick.
+    tickIndices.push(data.length-1);
+  }
+
+  if (accessor)
+  {
+    return tickIndices.map(function(d) { return accessor(d); });
+  }
+  return tickIndices.map(function(i) { return data[i]; });
+}
+
+
+    </script>
+    <script id="csv" type="text/csv">Name,Points Played,Points Won,Points Lost,Posessions played,Offensive Posessions,Defensive Posessions,Scores per 100 Points,Assists per 100 Points,Ds per 100 Posessions,Completed throws per 100 Posessions,Catches per 100 Posessions,Turnover Percentage,Assist Percentage,Assist to Turnover Ratio,Score Percentage,Drop Percentage,Complete Throws,Catches,Turnovers,Drops,Assists,Scores,Ds,Involvements,Throws to dropper,Disc Pickups
+KG,50,31,19,183,96,87,6,20,7,96,70,19%,9%,0.48,4%,1%,92,67,21,1,10,3,6,119,2,51
+Max,52,33,19,177,92,85,2,15,0,98,61,6%,8%,1.33,2%,2%,90,56,6,1,8,1,0,100,2,43
+Wes,21,11,10,78,40,38,24,5,5,48,63,0%,5%,0,20%,0%,19,25,0,0,1,5,2,25,1,0
+Paul,30,17,13,106,58,48,3,10,10,29,36,15%,15%,1,4%,9%,17,21,3,2,3,1,5,24,1,1
+JJ,20,13,7,76,40,36,10,15,6,38,48,21%,16%,0.75,10%,5%,15,19,4,1,3,2,2,23,1,3
+Jamie,62,41,21,226,119,107,26,3,4,28,47,18%,5%,0.29,27%,5%,33,56,7,3,2,16,4,60,1,1
+Shiro,57,33,24,211,110,101,2,5,4,34,36,12%,7%,0.6,2%,5%,37,40,5,2,3,1,4,49,4,7
+Jocelyn,49,29,20,215,109,106,4,2,1,15,20,11%,6%,0.5,9%,4%,16,22,2,1,1,2,1,23,2,0
+Harrison,42,25,17,177,89,88,10,19,13,57,47,23%,12%,0.53,9%,5%,51,42,15,2,8,4,11,73,1,29
+Hinman,40,24,16,156,78,78,8,8,8,72,76,16%,4%,0.27,5%,0%,56,59,11,0,3,3,6,73,3,14
+Cheek,43,22,21,199,97,102,7,21,8,58,59,25%,12%,0.47,5%,0%,56,57,19,0,9,3,8,81,3,24
+Chloe,41,23,18,203,99,104,12,5,2,11,18,21%,14%,0.67,24%,14%,11,18,3,3,2,5,2,22,0,1
+Lauren,45,26,19,217,106,111,13,4,4,13,20,13%,13%,1,27%,5%,14,21,2,1,2,6,4,23,0,1
+Colton,39,22,17,185,93,92,15,8,7,48,55,6%,6%,1,12%,0%,45,51,3,0,3,6,6,54,0,3
+Doc,15,10,5,74,36,38,7,0,3,22,28,20%,0%,0,10%,0%,8,10,2,0,0,1,1,11,0,1
+Shane,10,4,6,39,17,22,10,0,9,24,24,0%,0%,0,25%,0%,4,4,0,0,0,1,2,5,0,1
+Katrina,46,24,22,208,102,106,2,0,3,48,51,27%,0%,0,2%,4%,49,52,18,2,0,1,3,73,3,19
+Maturo,27,14,13,122,61,61,4,11,0,66,41,18%,6%,0.33,4%,0%,40,25,9,0,3,1,0,50,0,25
+Bradley,37,16,21,143,71,72,0,11,4,62,54,17%,8%,0.44,0%,3%,44,38,9,1,4,0,3,58,4,19
+Samson,28,11,17,97,46,51,4,4,0,59,57,18%,3%,0.17,4%,4%,27,26,6,1,1,1,0,35,0,8
+Stacie,34,18,16,131,65,66,0,6,8,12,12,20%,20%,1,0%,0%,8,8,2,0,2,0,5,10,0,2
+Nate,20,8,12,86,42,44,10,15,7,40,50,29%,13%,0.43,9%,5%,17,21,7,1,3,2,3,27,0,5
+Wags,25,13,12,93,46,47,12,0,2,20,33,31%,0%,0,16%,21%,9,15,4,4,0,3,1,20,0,1
+Lisa,23,12,11,98,49,49,0,0,2,6,6,0%,0%,0,0%,0%,3,3,0,0,0,0,1,3,0,0
+Jenna,21,10,11,97,48,49,5,0,4,13,15,14%,0%,0,13%,13%,6,7,1,1,0,1,2,9,0,1
+Jennifer,12,7,5,36,18,18,17,0,0,0,17,100%,0%,0,50%,25%,0,3,1,1,0,2,0,4,0,0
+</script>
+    <script>renderChart(0);</script>
+  </body>
+</html>
